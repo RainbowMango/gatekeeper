@@ -2315,6 +2315,7 @@ spec:
         - --operation=status
         - --operation=mutation-status
         - --logtostderr
+        - --kubeconfig=/etc/kubeconfig
         command:
         - /manager
         env:
@@ -2364,6 +2365,9 @@ spec:
         volumeMounts:
         - mountPath: /tmp/audit
           name: tmp-volume
+        - name: kubeconfig
+          subPath: kubeconfig
+          mountPath: /etc/kubeconfig
       nodeSelector:
         kubernetes.io/os: linux
       priorityClassName: system-cluster-critical
@@ -2372,6 +2376,36 @@ spec:
       volumes:
       - emptyDir: {}
         name: tmp-volume
+      - name: kubeconfig
+        secret:
+          secretName: kubeconfig
+---
+apiVersion: v1
+stringData:
+  kubeconfig: |-
+    apiVersion: v1
+    clusters:
+    - cluster:
+        certificate-authority-data: {{ca_crt}}
+        server: https://karmada-apiserver.karmada-system.svc.cluster.local:5443
+      name: kind-karmada
+    contexts:
+    - context:
+        cluster: kind-karmada
+        user: kind-karmada
+      name: karmada
+    current-context: karmada
+    kind: Config
+    preferences: {}
+    users:
+    - name: kind-karmada
+      user:
+        client-certificate-data: {{client_cer}}
+        client-key-data: {{client_key}}
+kind: Secret
+metadata:
+  name: kubeconfig
+  namespace: gatekeeper-system
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -2418,6 +2452,7 @@ spec:
         - --exempt-namespace=gatekeeper-system
         - --operation=webhook
         - --operation=mutation-webhook
+        - --kubeconfig=/etc/kubeconfig
         command:
         - /manager
         env:
@@ -2471,6 +2506,9 @@ spec:
         - mountPath: /certs
           name: cert
           readOnly: true
+        - name: kubeconfig
+          subPath: kubeconfig
+          mountPath: /etc/kubeconfig
       nodeSelector:
         kubernetes.io/os: linux
       priorityClassName: system-cluster-critical
@@ -2481,6 +2519,9 @@ spec:
         secret:
           defaultMode: 420
           secretName: gatekeeper-webhook-server-cert
+      - name: kubeconfig
+        secret:
+          secretName: kubeconfig
 ---
 apiVersion: policy/v1beta1
 kind: PodDisruptionBudget
